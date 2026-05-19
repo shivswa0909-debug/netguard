@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NetGuard — Intrusion Detection System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #050a0f;
+      --panel:     #0b1520;
+      --border:    #0f2a3f;
+      --accent:    #00e5ff;
+      --danger:    #ff2d55;
+      --safe:      #00ff88;
+      --warn:      #ffd600;
+      --text:      #c8e6f5;
+      --muted:     #3a6070;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-ui:   'Rajdhani', sans-serif;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── animated grid background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* ── scanline overlay ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.18) 2px,
+        rgba(0,0,0,.18) 4px
+      );
+      pointer-events: none;
+    }
+
+    .wrapper {
+      position: relative; z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 40px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .logo-icon {
+      width: 52px; height: 52px;
+      border: 2px solid var(--accent);
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-size: 24px;
+      box-shadow: 0 0 20px rgba(0,229,255,.3);
+      flex-shrink: 0;
+    }
+
+    .logo-text h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(0,229,255,.5);
+    }
+
+    .logo-text p {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      color: var(--muted);
+      letter-spacing: 2px;
+      margin-top: 2px;
+    }
+
+    .status-dot {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      color: var(--safe);
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--safe);
+      box-shadow: 0 0 8px var(--safe);
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── UPLOAD CARD ── */
+    .upload-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      margin-bottom: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 24px;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .card-title::before {
+      content: '▸';
+      font-size: .9rem;
+    }
+
+    /* ── DROP ZONE ── */
+    .drop-zone {
+      border: 2px dashed var(--muted);
+      border-radius: 10px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .3s ease;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(0,229,255,.04);
+      box-shadow: inset 0 0 30px rgba(0,229,255,.06);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+
+    .drop-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+    .drop-zone h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .drop-zone p {
+      font-family: var(--font-mono);
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    .file-name-display {
+      margin-top: 12px;
+      font-family: var(--font-mono);
+      font-size: .82rem;
+      color: var(--accent);
+      min-height: 20px;
+    }
+
+    /* ── SUBMIT BUTTON ── */
+    .btn-scan {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 16px;
+      background: transparent;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      color: var(--accent);
+      font-family: var(--font-ui);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all .25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-scan::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--accent);
+      transform: translateX(-100%);
+      transition: transform .25s ease;
+    }
+
+    .btn-scan:hover::before { transform: translateX(0); }
+    .btn-scan:hover { color: var(--bg); }
+    .btn-scan span { position: relative; z-index: 1; }
+
+    /* ── ERROR ALERT ── */
+    .alert-error {
+      background: rgba(255,45,85,.1);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      padding: 16px 20px;
+      color: var(--danger);
+      font-family: var(--font-mono);
+      font-size: .85rem;
+      margin-bottom: 24px;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .alert-error::before { content: '⚠'; font-size: 1.1rem; }
+
+    /* ── STATS ROW ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card.total  { border-top: 3px solid var(--accent); }
+    .stat-card.safe   { border-top: 3px solid var(--safe);   }
+    .stat-card.threat { border-top: 3px solid var(--danger);  }
+
+    .stat-card .stat-num {
+      font-family: var(--font-mono);
+      font-size: 2.8rem;
+      font-weight: 400;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-card.total  .stat-num { color: var(--accent); }
+    .stat-card.safe   .stat-num { color: var(--safe);   }
+    .stat-card.threat .stat-num { color: var(--danger);  }
+
+    .stat-card .stat-label {
+      font-size: .75rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── RESULTS TABLE ── */
+    .results-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .results-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .results-header {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .results-header .card-title { margin-bottom: 0; }
+
+    .filename-badge {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      color: var(--muted);
+      background: rgba(0,229,255,.05);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+
+    thead th {
+      padding: 14px 20px;
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(15,42,63,.6);
+      transition: background .15s;
+    }
+
+    tbody tr:hover { background: rgba(0,229,255,.03); }
+
+    tbody td {
+      padding: 12px 20px;
+      font-family: var(--font-mono);
+      font-size: .82rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    /* prediction badge */
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .badge-safe {
+      background: rgba(0,255,136,.1);
+      color: var(--safe);
+      border: 1px solid rgba(0,255,136,.3);
+    }
+
+    .badge-attack {
+      background: rgba(255,45,85,.1);
+      color: var(--danger);
+      border: 1px solid rgba(255,45,85,.3);
+      animation: pulse-danger 2s infinite;
+    }
+
+    @keyframes pulse-danger {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,45,85,0); }
+      50%      { box-shadow: 0 0 8px 2px rgba(255,45,85,.25); }
+    }
+
+    .badge::before {
+      content: '●';
+      font-size: .6rem;
+    }
+
+    /* threat bar */
+    .threat-bar-wrap {
+      padding: 20px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .threat-label {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .threat-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(0,255,136,.2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .threat-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--safe), var(--danger));
+      border-radius: 3px;
+      transition: width 1s ease;
+    }
+
+    .threat-pct {
+      font-family: var(--font-mono);
+      font-size: .82rem;
+      color: var(--warn);
+      white-space: nowrap;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      color: var(--muted);
+      letter-spacing: 2px;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      header { flex-wrap: wrap; }
+      .status-dot { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-icon">🛡️</div>
+    <div class="logo-text">
+      <h1>NetGuard</h1>
+      <p>// NETWORK INTRUSION DETECTION SYSTEM v1.0</p>
+    </div>
+    <div class="status-dot">SYSTEM ONLINE</div>
+  </header>
+
+  <!-- ERROR -->
+  {% if error %}
+  <div class="alert-error">{{ error }}</div>
+  {% endif %}
+
+  <!-- UPLOAD FORM -->
+  <div class="upload-card">
+    <div class="card-title">Upload Network Traffic Log</div>
+    <form action="/predict" method="POST" enctype="multipart/form-data">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" name="file" id="fileInput" accept=".csv" required/>
+        <div class="drop-icon">📁</div>
+        <h3>Drop CSV file here</h3>
+        <p>or click to browse — accepts KDD Cup-format .csv files</p>
+        <div class="file-name-display" id="fileNameDisplay"></div>
+      </div>
+      <button type="submit" class="btn-scan">
+        <span>⚡ &nbsp;Run Threat Analysis</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- RESULTS -->
+  {% if results %}
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card total">
+      <div class="stat-num">{{ total }}</div>
+      <div class="stat-label">Total Packets</div>
+    </div>
+    <div class="stat-card safe">
+      <div class="stat-num">{{ safe }}</div>
+      <div class="stat-label">Normal</div>
+    </div>
+    <div class="stat-card threat">
+      <div class="stat-num">{{ threats }}</div>
+      <div class="stat-label">Threats Detected</div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="results-card">
+    <div class="results-header">
+      <div class="card-title">Analysis Results</div>
+      <span class="filename-badge">{{ filename }}</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Protocol</th>
+            <th>Src Bytes</th>
+            <th>Dst Bytes</th>
+            <th>Flag</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr>
+            <td>{{ r.row }}</td>
+            <td>{{ r.protocol }}</td>
+            <td>{{ r.src_bytes }}</td>
+            <td>{{ r.dst_bytes }}</td>
+            <td>{{ r.flag }}</td>
+            <td>
+              {% if r.prediction == "attack" %}
+                <span class="badge badge-attack">Attack</span>
+              {% else %}
+                <span class="badge badge-safe">Normal</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- THREAT BAR -->
+    {% if total > 0 %}
+    <div class="threat-bar-wrap">
+      <span class="threat-label">THREAT LEVEL</span>
+      <div class="threat-bar">
+        <div class="threat-fill" style="width: {{ (threats / total * 100)|round(1) }}%"></div>
+      </div>
+      <span class="threat-pct">{{ (threats / total * 100)|round(1) }}%</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% endif %}
+
+  <footer>
+    NETGUARD IDS &nbsp;|&nbsp; POWERED BY ML &nbsp;|&nbsp; KDD CUP DATASET
+  </footer>
+
+</div>
+
+<script>
+  const input   = document.getElementById('fileInput');
+  const display = document.getElementById('fileNameDisplay');
+  const zone    = document.getElementById('dropZone');
+
+  input.addEventListener('change', () => {
+    if (input.files.length > 0)
+      display.textContent = '✓ ' + input.files[0].name;
+  });
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length > 0) {
+      input.files = e.dataTransfer.files;
+      display.textContent = '✓ ' + e.dataTransfer.files[0].name;
+    }
+  });
+</script>
+</body>
+</html>
